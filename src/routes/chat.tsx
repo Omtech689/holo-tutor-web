@@ -408,16 +408,49 @@ function ChatPage() {
 
 function Bubble({ role, content }: { role: "user" | "assistant"; content: string }) {
   const isUser = role === "user";
+  const [speaking, setSpeaking] = useState(false);
+  const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+  function toggleSpeak() {
+    if (!ttsSupported) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    const clean = content
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/[`*_#>~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    setSpeaking(true);
+  }
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-[var(--shadow-card)] ${
+        className={`group max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-[var(--shadow-card)] ${
           isUser
             ? "bg-gradient-to-br from-primary/90 to-accent/80 text-primary-foreground"
             : "glass"
         }`}
       >
         <FormattedContent text={content} />
+        {!isUser && ttsSupported && (
+          <button
+            onClick={toggleSpeak}
+            className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+            title={speaking ? "Stop" : "Read aloud"}
+          >
+            {speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            {speaking ? "Stop" : "Listen"}
+          </button>
+        )}
       </div>
     </div>
   );
