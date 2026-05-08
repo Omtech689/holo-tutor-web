@@ -67,7 +67,9 @@ function ChatPage() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [ttsSupported, setTtsSupported] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     setSpeechSupported(
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
