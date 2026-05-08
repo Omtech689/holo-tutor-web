@@ -528,7 +528,7 @@ function ChatPage() {
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
-              {speechSupported && ttsSupported && (
+              {mounted && speechSupported && ttsSupported && (
                 <Button
                   onClick={toggleConvoMode}
                   size="icon"
