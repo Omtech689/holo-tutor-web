@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { askHomework } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
@@ -451,7 +451,7 @@ function ChatPage() {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </span>
-            Synaptic
+            ScholarX
           </div>
           <div className="px-3">
             <Button
@@ -856,30 +856,69 @@ function renderInline(s: string): React.ReactNode {
   });
 }
 
+const ALL_PROMPTS: Record<Subject, string[]> = {
+  math: [
+    "Walk me through solving 2x² + 5x − 3 = 0 step by step",
+    "Explain the chain rule with a simple example",
+    "How do I find the area under a curve using integration?",
+    "What's the difference between permutations and combinations?",
+    "Help me understand the Pythagorean theorem",
+    "How do I solve a system of two equations?",
+    "Explain what a derivative means in plain English",
+    "What are the rules for working with exponents?",
+  ],
+  science: [
+    "Why does ice float on water?",
+    "Explain photosynthesis in 5 steps",
+    "What is Newton's second law and how do I use it?",
+    "How does DNA replication work?",
+    "What's the difference between an atom and a molecule?",
+    "Explain the water cycle step by step",
+    "Why do objects fall at the same speed regardless of mass?",
+    "What causes seasons on Earth?",
+  ],
+  english: [
+    "Help me outline an essay about the theme of identity in 'The Outsiders'",
+    "What's the difference between 'affect' and 'effect'?",
+    "How do I write a strong thesis statement?",
+    "Explain the difference between a simile and a metaphor",
+    "Help me improve this sentence: 'The thing was very big and it was scary'",
+    "What are the main elements of a short story?",
+    "How do I cite sources in MLA format?",
+    "What is foreshadowing? Give me an example",
+  ],
+  history: [
+    "What caused World War I? Give me the main factors.",
+    "Compare the American and French Revolutions",
+    "Why did the Roman Empire fall?",
+    "What was the significance of the Magna Carta?",
+    "Explain the causes and effects of the Great Depression",
+    "Who were the key figures of the Civil Rights Movement?",
+    "What led to World War II in Europe?",
+    "How did the Cold War shape the modern world?",
+  ],
+  general: [
+    "Explain Newton's three laws of motion",
+    "Help me understand fractions",
+    "What is a metaphor? Give 3 examples",
+    "How do I manage my time better for studying?",
+    "What's the best way to take notes in class?",
+    "Help me make a study plan for my exams",
+    "Explain the scientific method step by step",
+    "What is critical thinking and how do I practise it?",
+  ],
+};
+
 function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string) => void }) {
-  const prompts: Record<Subject, string[]> = {
-    math: [
-      "Walk me through solving 2x² + 5x − 3 = 0 step by step",
-      "Explain the chain rule with a simple example",
-    ],
-    science: [
-      "Why does ice float on water?",
-      "Explain photosynthesis in 5 steps",
-    ],
-    english: [
-      "Help me outline an essay about the theme of identity in 'The Outsiders'",
-      "What's the difference between 'affect' and 'effect'?",
-    ],
-    history: [
-      "What caused World War I? Give me the main factors.",
-      "Compare the American and French Revolutions",
-    ],
-    general: [
-      "Explain Newton's three laws of motion",
-      "Help me understand fractions",
-      "What is a metaphor? Give 3 examples",
-    ],
-  };
+  const displayed = useMemo(() => {
+    const pool = [...ALL_PROMPTS[subject]];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, 3);
+  }, [subject]);
+
   return (
     <div className="mt-12 text-center">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent glow">
@@ -890,7 +929,7 @@ function EmptyState({ subject, onPick }: { subject: Subject; onPick: (s: string)
         Pick a subject above and ask anything. I'll explain step by step.
       </p>
       <div className="mx-auto mt-8 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
-        {prompts[subject].map((p) => (
+        {displayed.map((p) => (
           <button
             key={p}
             onClick={() => onPick(p)}
