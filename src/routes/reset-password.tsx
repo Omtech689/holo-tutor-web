@@ -8,12 +8,6 @@ import { toast } from "sonner";
 import { Sparkles, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
-  beforeLoad: async ({ search }) => {
-    // Check if there's a valid reset token in the URL
-    if (!search?.token) {
-      throw redirect({ to: "/login?error=invalid_reset_link" });
-    }
-  },
   component: ResetPasswordPage,
 });
 
@@ -22,16 +16,22 @@ function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [hasValidToken, setHasValidToken] = useState(false);
 
   useEffect(() => {
-    // Extract the token from the URL hash or query params
+    // Extract the token from URL hash (Supabase sends tokens in hash)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const searchParams = new URLSearchParams(window.location.search);
-    const accessToken = hashParams.get("access_token") || searchParams.get("token");
+    const accessToken = hashParams.get("access_token");
+    const type = hashParams.get("type");
     
-    if (!accessToken) {
+    // Check if this is a valid password reset link
+    if (accessToken && type === "recovery") {
+      setHasValidToken(true);
+    } else {
       toast.error("Invalid reset link. Please request a new password reset.");
-      window.location.href = "/login";
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
     }
   }, []);
 
@@ -65,6 +65,25 @@ function ResetPasswordPage() {
 
     setLoading(true);
     try {
+      // First exchange the reset token for a session
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken!,
+        refresh_token: refreshToken!,
+      });
+
+      if (sessionError) {
+        toast.error("Invalid or expired reset link. Please request a new password reset.");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+        return;
+      }
+
+      // Now update the password with the authenticated session
       const { error } = await supabase.auth.updateUser({
         password: password,
       });
