@@ -136,6 +136,26 @@ function ProfilePage() {
 
     setPasswordLoading(true);
     try {
+      // First verify current password by signing in
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user?.email) {
+        toast.error("User session expired. Please sign in again.");
+        return;
+      }
+
+      // Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        toast.error("Current password is incorrect");
+        console.error("Password verification error:", signInError);
+        return;
+      }
+
+      // If current password is valid, update to new password
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
