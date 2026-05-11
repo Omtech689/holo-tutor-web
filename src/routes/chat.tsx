@@ -286,10 +286,63 @@ function ChatPage() {
 
   async function deleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this chat?")) return;
-    await supabase.from("conversations").delete().eq("id", id);
-    if (activeId === id) newChat();
-    await loadConversations();
+    
+    // Find conversation title for better confirmation message
+    const convo = conversations.find(c => c.id === id);
+    const title = convo?.title || "this chat";
+    
+    if (!confirm(`Delete "${title}"? This will permanently remove all messages in this conversation.`)) return;
+    
+    try {
+      const { error } = await supabase.from("conversations").delete().eq("id", id);
+      if (error) {
+        toast.error("Failed to delete conversation");
+        console.error("Delete error:", error);
+        return;
+      }
+      
+      toast.success("Conversation deleted");
+      if (activeId === id) newChat();
+      await loadConversations();
+    } catch (err) {
+      toast.error("Something went wrong");
+      console.error("Delete error:", err);
+    }
+  }
+
+  async function deleteAllConversations() {
+    if (conversations.length === 0) {
+      toast.error("No conversations to delete");
+      return;
+    }
+    
+    if (!confirm(`Delete all ${conversations.length} conversations? This will permanently remove all your chat history and cannot be undone.`)) return;
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        toast.error("Please sign in again");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("user_id", userData.user.id);
+        
+      if (error) {
+        toast.error("Failed to delete conversations");
+        console.error("Delete all error:", error);
+        return;
+      }
+      
+      toast.success(`Deleted ${conversations.length} conversations`);
+      newChat();
+      await loadConversations();
+    } catch (err) {
+      toast.error("Something went wrong");
+      console.error("Delete all error:", err);
+    }
   }
 
   async function logout() {
@@ -403,6 +456,19 @@ function ChatPage() {
         <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
           History
         </div>
+        {conversations.length > 0 && (
+          <div className="px-3 pb-2">
+            <Button 
+              onClick={deleteAllConversations}
+              variant="ghost" 
+              size="sm"
+              className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete all conversations
+            </Button>
+          </div>
+        )}
         <ScrollArea className="mt-2 flex-1 px-2">
           <ul className="space-y-1 pb-4">
             {conversations.length === 0 && (
