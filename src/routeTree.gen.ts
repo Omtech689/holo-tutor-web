@@ -9,12 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlashcardsRoute = FlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlannerRoute = PlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
@@ -46,6 +64,9 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +74,9 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesById {
@@ -61,14 +85,17 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/login': typeof LoginRoute
   '/planner': typeof PlannerRoute
+  '/flashcards': typeof FlashcardsRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/login' | '/planner' | '/auth/callback'
+  fullPaths: '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/login' | '/planner' | '/auth/callback'
-  id: '__root__' | '/' | '/chat' | '/login' | '/planner' | '/auth/callback'
+  to: '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
+  id: '__root__' | '/' | '/chat' | '/login' | '/planner' | '/flashcards' | '/profile' | '/reset-password' | '/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +103,9 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   LoginRoute: typeof LoginRoute
   PlannerRoute: typeof PlannerRoute
+  FlashcardsRoute: typeof FlashcardsRoute
+  ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -86,6 +116,27 @@ declare module '@tanstack/react-router' {
       path: '/planner'
       fullPath: '/planner'
       preLoaderRoute: typeof PlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flashcards': {
+      id: '/flashcards'
+      path: '/flashcards'
+      fullPath: '/flashcards'
+      preLoaderRoute: typeof FlashcardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -124,6 +175,9 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   LoginRoute: LoginRoute,
   PlannerRoute: PlannerRoute,
+  FlashcardsRoute: FlashcardsRoute,
+  ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

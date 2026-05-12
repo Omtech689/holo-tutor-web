@@ -192,17 +192,30 @@ function ProfilePage() {
 
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail,
-      });
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user?.email) {
+        toast.error("User session expired. Please sign in again.");
+        return;
+      }
 
+      // Verify current password before allowing email change
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: emailPassword,
+      });
+      if (signInError) {
+        toast.error("Current password is incorrect");
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
       if (error) {
         toast.error(error.message || "Failed to update email");
         console.error(error);
         return;
       }
 
-      toast.success("Email update initiated. Please check your inbox to confirm.");
+      toast.success("Confirmation sent! Check both your current and new email inbox.");
       setNewEmail("");
       setEmailPassword("");
     } catch (err) {
