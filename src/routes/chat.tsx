@@ -86,6 +86,10 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const sidebarDraggingRef = useRef(false);
+  const sidebarStartXRef = useRef(0);
+  const sidebarStartWidthRef = useRef(320);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -93,6 +97,44 @@ function ChatPage() {
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
     setTtsSupported("speechSynthesis" in window);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = Number(localStorage.getItem("chatSidebarWidth"));
+    if (!Number.isNaN(saved) && saved >= 240 && saved <= 520) {
+      setSidebarWidth(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("chatSidebarWidth", String(sidebarWidth));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!sidebarDraggingRef.current) return;
+      const nextWidth = Math.min(
+        520,
+        Math.max(240, sidebarStartWidthRef.current + (event.clientX - sidebarStartXRef.current)),
+      );
+      setSidebarWidth(nextWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (!sidebarDraggingRef.current) return;
+      sidebarDraggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
   }, []);
 
   useEffect(() => {
@@ -522,7 +564,21 @@ function ChatPage() {
       </Sheet>
 
       {/* Sidebar — desktop only */}
-      <aside className="hidden w-80 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex">
+      <aside
+        className="hidden shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex min-w-[240px] max-w-[520px] relative"
+        style={{ width: `${sidebarWidth}px` }}
+      >
+        <div className="absolute inset-y-0 right-0 flex w-3 cursor-col-resize items-center justify-center hover:bg-border/20"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            sidebarDraggingRef.current = true;
+            sidebarStartXRef.current = e.clientX;
+            sidebarStartWidthRef.current = sidebarWidth;
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+          }}
+          aria-label="Resize sidebar"
+        />
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
