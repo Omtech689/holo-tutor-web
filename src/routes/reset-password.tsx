@@ -19,28 +19,67 @@ function ResetPasswordPage() {
   const [hasValidToken, setHasValidToken] = useState(false);
 
   useEffect(() => {
-    // Extract token from URL hash (Supabase sends tokens in hash)
-    const hash = window.location.hash;
-    console.log("Full URL hash:", hash);
-    
-    const hashParams = new URLSearchParams(hash.substring(1));
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    const type = hashParams.get("type");
-    
-    console.log("Extracted params:", { accessToken, refreshToken, type });
-    
-    // Check if this is a valid password reset link
-    if (accessToken && type === "recovery") {
-      setHasValidToken(true);
-      // Store tokens for use in submit
-      (window as any).resetTokens = { accessToken, refreshToken };
-    } else {
+    let cancelled = false;
+
+    async function initRecovery() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      // Capture hash synchronously before any async auth work (client may strip the fragment).
+      const hashParams = new URLSearchParams(
+        window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
+      );
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+
+      if (accessToken && refreshToken && type === "recovery") {
+        (window as Window & { resetTokens?: { accessToken: string; refreshToken: string } }).resetTokens =
+          { accessToken, refreshToken };
+      }
+
+      // PKCE / SSR-style recovery: ?code=... on the reset URL
+      if (code && code.length > 10) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (error) {
+          toast.error("Invalid or expired reset link. Please request a new password reset.");
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 2000);
+          return;
+        }
+        setHasValidToken(true);
+        window.history.replaceState({}, document.title, url.pathname);
+        return;
+      }
+
+      await supabase.auth.initialize();
+      if (cancelled) return;
+
+      const hadRecoveryHash = Boolean(accessToken && type === "recovery");
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (hadRecoveryHash && sessionData.session?.user) {
+        setHasValidToken(true);
+        return;
+      }
+
+      if (accessToken && refreshToken && type === "recovery") {
+        setHasValidToken(true);
+        return;
+      }
+
       toast.error("Invalid reset link. Please request a new password reset.");
       setTimeout(() => {
         window.location.href = "/login";
       }, 2000);
     }
+
+    void initRecovery();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,29 +112,37 @@ function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      // Use stored tokens from the initial extraction
-      const storedTokens = (window as any).resetTokens;
-      console.log("Using stored tokens:", storedTokens);
-      
-      if (!storedTokens?.accessToken || !storedTokens?.refreshToken) {
-        toast.error("Reset tokens not found. Please try the reset link again.");
+      let {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      // PKCE or implicit session may already exist after opening the email link.
+      if (!session?.user) {
+        const stored = (window as Window & { resetTokens?: { accessToken: string; refreshToken: string } })
+          .resetTokens;
+        if (stored?.accessToken && stored?.refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: stored.accessToken,
+            refresh_token: stored.refreshToken,
+          });
+          if (sessionError) {
+            toast.error("Invalid or expired reset link. Please request a new password reset.");
+            setTimeout(() => {
+              window.location.href = "/login";
+            }, 2000);
+            return;
+          }
+          ({
+            data: { session },
+          } = await supabase.auth.getSession());
+        }
+      }
+
+      if (!session?.user) {
+        toast.error("Reset session not found. Open the link from your email again, or request a new reset.");
         return;
       }
-      
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: storedTokens.accessToken,
-        refresh_token: storedTokens.refreshToken,
-      });
 
-      if (sessionError) {
-        toast.error("Invalid or expired reset link. Please request a new password reset.");
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 2000);
-        return;
-      }
-
-      // Now update the password with the authenticated session
       const { error } = await supabase.auth.updateUser({
         password: password,
       });
