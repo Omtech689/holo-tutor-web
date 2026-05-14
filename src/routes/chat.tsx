@@ -518,21 +518,28 @@ function ChatPage() {
               )}
               {conversations.map((c) => (
                 <li key={c.id}>
-                  <button
-                    onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
-                    className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeId === c.id
-                        ? "bg-primary/15 text-foreground"
-                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1 truncate">{c.title}</span>
-                    <Trash2
+                  <div className="group flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => { selectConversation(c.id); setMobileMenuOpen(false); }}
+                      className={`flex-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        activeId === c.id
+                          ? "bg-primary/15 text-foreground"
+                          : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex-1 truncate">{c.title}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={(e) => deleteConversation(c.id, e)}
-                      className="h-3.5 w-3.5 cursor-pointer text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                    />
-                  </button>
+                      className="h-8 w-8 rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -569,18 +576,23 @@ function ChatPage() {
         className="hidden shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur md:flex min-w-[240px] max-w-[520px] relative"
         style={{ width: `${sidebarWidth}px` }}
       >
-        <div className="absolute inset-y-0 right-0 flex w-8 cursor-col-resize items-center justify-center hover:bg-border/20"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            sidebarDraggingRef.current = true;
-            sidebarStartXRef.current = e.clientX;
-            sidebarStartWidthRef.current = sidebarWidth;
-            document.body.style.cursor = "col-resize";
-            document.body.style.userSelect = "none";
-          }}
-          aria-label="Resize sidebar"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        <div className="absolute inset-y-0 right-0 flex w-8 cursor-col-resize hover:bg-border/20">
+          <div className="pt-4 flex items-start justify-center w-full">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <button
+            type="button"
+            className="absolute inset-0"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              sidebarDraggingRef.current = true;
+              sidebarStartXRef.current = e.clientX;
+              sidebarStartWidthRef.current = sidebarWidth;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            aria-label="Resize sidebar"
+          />
         </div>
         <div className="flex items-center gap-2 px-5 py-5 font-display text-lg font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent glow">
