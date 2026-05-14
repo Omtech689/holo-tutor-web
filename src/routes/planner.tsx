@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   ListTodo,
   Flag,
+  Layers,
 } from "lucide-react";
 
 type Priority = "low" | "medium" | "high";
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/planner")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
+    if (!data.session) throw redirect({ to: "/login", search: { mode: "signin" } });
   },
   component: PlannerPage,
 });
@@ -219,10 +220,19 @@ function PlannerPage() {
             </div>
           </div>
 
-          <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New task
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button onClick={() => setShowNew((v) => !v)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New task
+            </Button>
+            <Link
+              to="/flashcards"
+              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground transition items-center gap-1.5 px-2"
+            >
+              <Layers className="h-4 w-4" />
+              Flashcards
+            </Link>
+          </div>
         </div>
       </header>
 

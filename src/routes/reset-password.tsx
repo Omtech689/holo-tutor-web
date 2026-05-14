@@ -21,24 +21,39 @@ function ResetPasswordPage() {
   useEffect(() => {
     let cancelled = false;
 
+    const readHashParams = () => {
+      const raw = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+      const p = new URLSearchParams(raw);
+      return {
+        accessToken: p.get("access_token"),
+        refreshToken: p.get("refresh_token"),
+        type: p.get("type"),
+      };
+    };
+
     async function initRecovery() {
+      const { accessToken, refreshToken, type } = readHashParams();
+      const typeNorm = type?.toLowerCase() ?? "";
+      const hasTokenPair = Boolean(accessToken && refreshToken);
+      // Supabase recovery links use type=recovery; some clients omit type while still sending the pair.
+      const recoveryLikely =
+        typeNorm === "recovery" ||
+        (hasTokenPair &&
+          typeNorm !== "signup" &&
+          typeNorm !== "email_change" &&
+          typeNorm !== "magiclink" &&
+          typeNorm !== "invite");
+
+      const w = window as Window & { resetTokens?: { accessToken: string; refreshToken: string } };
+      if (hasTokenPair && recoveryLikely) {
+        w.resetTokens = { accessToken: accessToken!, refreshToken: refreshToken! };
+      }
+
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
 
-      // Capture hash synchronously before any async auth work (client may strip the fragment).
-      const hashParams = new URLSearchParams(
-        window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
-      );
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      const type = hashParams.get("type");
-
-      if (accessToken && refreshToken && type === "recovery") {
-        (window as Window & { resetTokens?: { accessToken: string; refreshToken: string } }).resetTokens =
-          { accessToken, refreshToken };
-      }
-
-      // PKCE / SSR-style recovery: ?code=... on the reset URL
       if (code && code.length > 10) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
@@ -57,15 +72,14 @@ function ResetPasswordPage() {
       await supabase.auth.initialize();
       if (cancelled) return;
 
-      const hadRecoveryHash = Boolean(accessToken && type === "recovery");
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (hadRecoveryHash && sessionData.session?.user) {
+      if (w.resetTokens?.accessToken && w.resetTokens?.refreshToken) {
         setHasValidToken(true);
         return;
       }
 
-      if (accessToken && refreshToken && type === "recovery") {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (hasTokenPair && recoveryLikely && sessionData.session?.user) {
+        w.resetTokens = { accessToken: accessToken!, refreshToken: refreshToken! };
         setHasValidToken(true);
         return;
       }
