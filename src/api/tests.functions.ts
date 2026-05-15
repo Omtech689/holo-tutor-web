@@ -82,9 +82,10 @@ export const generateTest = createServerFn({ method: "POST" })
   {"type":"essay","question":"question text","answer":"sample answer"}
 ]
 
+CRITICAL MODE REQUIREMENT: You MUST create ${modeLabel}. If the mode is "all multiple-choice questions", EVERY question must be MCQ type. If the mode is "all essay questions", EVERY question must be essay type. If the mode is "a balanced mix", include both types.
+
 Rules:
 - Do not include markdown fences or extra commentary.
-- Use ${modeLabel}.
 - Produce 8 to 12 items unless the user specifically asks for fewer.
 - For MCQ items, provide 3 or 4 good answer choices and make the correct answer one of the options.
 - For essay items, provide a concise sample answer (2-4 sentences).
