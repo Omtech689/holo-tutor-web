@@ -175,11 +175,14 @@ function LoginPage() {
             <div className="flex justify-center">
               <Turnstile
                 key={widgetKey}
-                siteKey={TURNSTILE_SITE_KEY}
+                sitekey={TURNSTILE_SITE_KEY}
                 theme="dark"
                 onSuccess={(token) => setTurnstileToken(token)}
                 onExpire={() => setTurnstileToken(null)}
-                onError={() => setTurnstileToken(null)}
+                onError={() => {
+                  setTurnstileToken(null);
+                  toast.error("Security check failed. Please refresh and try again.");
+                }}
               />
             </div>
             <Button type="submit" className="w-full glow" disabled={loading || !turnstileToken}>
