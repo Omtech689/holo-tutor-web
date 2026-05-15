@@ -1,9 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MobileMenu } from "@/components/ui/mobile-menu";
 import { toast } from "sonner";
 import {
   User,
@@ -14,6 +15,7 @@ import {
   LogOut,
   CheckCircle,
   AlertCircle,
+  Menu,
 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
@@ -45,6 +47,8 @@ function ProfilePage() {
   // 2FA states
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProfile();
@@ -221,7 +225,7 @@ function ProfilePage() {
 
   async function logout() {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    navigate({ to: "/" });
   }
 
   if (loading) {
@@ -237,9 +241,23 @@ function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <MobileMenu
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        displayName={displayName}
+        onSignOut={logout}
+      />
       <div className="container mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(true)}
+            className="shrink-0 md:hidden"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
