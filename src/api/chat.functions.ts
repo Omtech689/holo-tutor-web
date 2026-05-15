@@ -48,9 +48,9 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
     try {
       let content: string;
       if (data.image) {
-        // Use Gemini for image analysis
+        // Use Gemma for image analysis
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
@@ -79,9 +79,9 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
         const json = await res.json();
         content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       } else {
-        // Use Gemini API with Gemma 4 31B model for text
+        // Use Gemini 3.1 Flash Lite for text conversations
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
