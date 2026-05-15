@@ -29,8 +29,7 @@ export const askHomework = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    const HF_TOKEN = process.env.HF_TOKEN;
-    if (!GEMINI_API_KEY || !HF_TOKEN) {
+    if (!GEMINI_API_KEY) {
       return { content: "", error: "AI is not configured. Please contact support." };
     }
 
@@ -51,7 +50,7 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
       if (data.image) {
         // Use Gemini for image analysis
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
@@ -80,19 +79,20 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
         const json = await res.json();
         content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       } else {
-        // Use Gemma via Hugging Face
-        const prompt = systemPrompt + "\n\n" + data.messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') + "\nAssistant: ";
+        // Use Gemini API with Gemma 4 31B model for text
         const res = await fetch(
-          'https://api-inference.huggingface.co/models/google/gemma-2-27b-it',
+          `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${HF_TOKEN}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              inputs: prompt,
-              parameters: { max_new_tokens: 512, temperature: 0.7 }
+              contents: [{
+                parts: [
+                  { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " }
+                ]
+              }]
             }),
           },
         );
@@ -102,13 +102,12 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
         }
         if (!res.ok) {
           const text = await res.text();
-          console.error("HF API error", res.status, text);
+          console.error("Gemini API error", res.status, text);
           return { content: "", error: "The AI tutor couldn't respond. Please try again." };
         }
 
         const json = await res.json();
-        const fullText = json[0]?.generated_text ?? "";
-        content = fullText.replace(prompt, '').trim();
+        content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       }
       return { content, error: null as string | null };
     } catch (e) {
