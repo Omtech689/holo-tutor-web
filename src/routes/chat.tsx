@@ -911,12 +911,13 @@ function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assist
   );
 }
 
-// Lightweight markdown-ish renderer (paragraphs, **bold**, lists, code)
+// Lightweight markdown-ish renderer (paragraphs, **bold**, *italics*, lists, code, tables)
 function FormattedContent({ text }: { text: string }) {
   const blocks = text.split(/\n{2,}/);
   return (
     <div className="space-y-2 whitespace-pre-wrap break-words">
       {blocks.map((b, i) => {
+        // Code blocks
         if (/^```/.test(b)) {
           const code = b.replace(/^```\w*\n?|```$/g, "");
           return (
@@ -928,6 +929,31 @@ function FormattedContent({ text }: { text: string }) {
             </pre>
           );
         }
+        // Tables
+        if (/^\|.*\|$/.test(b) && b.includes('|')) {
+          const rows = b.split('\n').filter(row => row.trim());
+          if (rows.length >= 2) {
+            return (
+              <table key={i} className="border-collapse border border-border rounded-lg overflow-hidden my-2">
+                <tbody>
+                  {rows.map((row, rowIndex) => {
+                    const cells = row.split('|').filter(cell => cell !== '').map(cell => cell.trim());
+                    return (
+                      <tr key={rowIndex}>
+                        {cells.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="border border-border px-3 py-2 text-sm">
+                            {renderInline(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          }
+        }
+        // Unordered lists
         if (/^(\s*[-*]\s)/m.test(b)) {
           return (
             <ul key={i} className="list-disc space-y-1 pl-5">
@@ -937,6 +963,7 @@ function FormattedContent({ text }: { text: string }) {
             </ul>
           );
         }
+        // Ordered lists
         if (/^\s*\d+\.\s/.test(b)) {
           return (
             <ol key={i} className="list-decimal space-y-1 pl-5">
