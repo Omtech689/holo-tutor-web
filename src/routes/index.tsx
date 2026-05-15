@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import "@/styles/landing.css";
@@ -277,7 +277,12 @@ function Landing() {
       </section>
 
       <footer className="landing-footer">
-        © {new Date().getFullYear()} ScholarX · Built for students who want to actually understand it.
+        <span>© {new Date().getFullYear()} ScholarX · Built for students who want to actually understand it.</span>
+        <span className="flex items-center gap-3 text-xs opacity-70">
+          <Link to="/privacy" className="hover:opacity-100 transition-opacity">Privacy Policy</Link>
+          <span>·</span>
+          <Link to="/terms" className="hover:opacity-100 transition-opacity">Terms of Service</Link>
+        </span>
       </footer>
     </main>
   );

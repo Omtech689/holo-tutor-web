@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { RouteError } from "@/components/ui/route-error";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/profile")({
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/login?mode=signin" });
   },
+  errorComponent: RouteError,
   component: ProfilePage,
 });
 

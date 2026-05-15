@@ -81,7 +81,7 @@ function FlashcardsPage() {
       if (error) throw error;
       return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 30,
     retry: 1,
   });
 

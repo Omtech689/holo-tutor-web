@@ -521,6 +521,11 @@
   border-top: 1px solid var(--border);
   margin-top: 4rem;
   padding: 2rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
   text-align: center;
   color: color-mix(in oklab, var(--foreground) 55%, transparent);
   font-size: 0.85rem;

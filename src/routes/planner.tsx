@@ -94,7 +94,7 @@ function PlannerPage() {
       if (error) throw error;
       return p?.display_name ?? u.user.email?.split("@")[0] ?? "Student";
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 30,
     retry: 1,
   });
 
@@ -152,7 +152,20 @@ function PlannerPage() {
         .eq("id", id);
       if (error) throw error;
     },
-    onError: () => {
+    onMutate: async ({ id, completed }) => {
+      await queryClient.cancelQueries({ queryKey: ["study_tasks"] });
+      const previous = queryClient.getQueryData<Task[]>(["study_tasks"]);
+      queryClient.setQueryData<Task[]>(["study_tasks"], (old) =>
+        old?.map((t) =>
+          t.id === id
+            ? { ...t, completed, completed_at: completed ? new Date().toISOString() : null }
+            : t
+        ) ?? []
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["study_tasks"], context.previous);
       toast.error("Update failed");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
@@ -163,13 +176,18 @@ function PlannerPage() {
       const { error } = await supabase.from("study_tasks").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["study_tasks"] });
-      toast.success("Task deleted");
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["study_tasks"] });
+      const previous = queryClient.getQueryData<Task[]>(["study_tasks"]);
+      queryClient.setQueryData<Task[]>(["study_tasks"], (old) => old?.filter((t) => t.id !== id) ?? []);
+      return { previous };
     },
-    onError: () => {
+    onSuccess: () => toast.success("Task deleted"),
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["study_tasks"], context.previous);
       toast.error("Delete failed");
     },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["study_tasks"] }),
   });
 
   async function logout() {

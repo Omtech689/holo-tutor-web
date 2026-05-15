@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { RouteError } from "@/components/ui/route-error";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { askHomework } from "@/api/chat.functions";
@@ -64,6 +65,7 @@ export const Route = createFileRoute("/chat")({
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/login" });
   },
+  errorComponent: RouteError,
   component: ChatPage,
 });
 
