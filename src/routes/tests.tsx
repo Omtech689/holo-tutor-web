@@ -320,7 +320,42 @@ function TestCreatorPage() {
               <BookOpen className="h-4 w-4" /> New test
             </Button>
           </div>
-          <div className="mt-auto border-t border-border px-3 py-3 space-y-2">
+          <div className="mt-4 px-5 text-xs uppercase tracking-wider text-muted-foreground">
+            Saved tests
+          </div>
+          <ScrollArea className="mt-2 flex-1 px-2">
+            <ul className="space-y-1 pb-4">
+              {savedTests.length === 0 && (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  No saved tests yet.
+                </li>
+              )}
+              {savedTests.map((test) => (
+                <li key={test.id}>
+                  <button
+                    onClick={() => {
+                      selectSavedTest(test.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      selectedTestId === test.id
+                        ? "bg-primary/15 text-foreground"
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium text-sm">{test.topic}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {test.mode.replace("all_", "").replace("mixed", "mixed")} • {new Date(test.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+          <div className="border-t border-border px-3 py-3 space-y-2">
             <Link
               to="/planner"
               onClick={() => setMobileMenuOpen(false)}
