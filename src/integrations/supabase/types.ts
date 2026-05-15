@@ -47,6 +47,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          image: string | null
           role: string
           user_id: string
         }
@@ -55,6 +56,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          image?: string | null
           role: string
           user_id: string
         }
@@ -159,8 +161,43 @@ export type Database = {
           },
         ]
       }
-      study_tasks: {
+      tests: {
         Row: {
+          answers: Json
+          created_at: string
+          evaluation: Json | null
+          id: string
+          mode: string
+          questions: Json
+          topic: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          evaluation?: Json | null
+          id?: string
+          mode: string
+          questions: Json
+          topic: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          evaluation?: Json | null
+          id?: string
+          mode?: string
+          questions?: Json
+          topic?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_tasks: {
           completed: boolean
           completed_at: string | null
           created_at: string
@@ -217,7 +254,7 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+export type Database = Database
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 

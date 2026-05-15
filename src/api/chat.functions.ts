@@ -21,6 +21,7 @@ const inputSchema = z.object({
     .min(1)
     .max(40),
   subject: z.enum(["math", "science", "english", "history", "general"]).default("general"),
+  image: z.string().optional(),
 });
 
 export const askHomework = createServerFn({ method: "POST" })
@@ -32,7 +33,8 @@ export const askHomework = createServerFn({ method: "POST" })
       return { content: "", error: "AI is not configured. Please contact support." };
     }
 
-    const systemPrompt = `You are ScholarX, a friendly AI homework tutor for students.
+    const systemPrompt = data.subject === "general"
+      ? `You are a friendly AI homework tutor for students.
 
 Your mission: help students LEARN, not cheat. You always:
 - Break problems into clear, numbered steps so the student understands the reasoning.
@@ -41,21 +43,34 @@ Your mission: help students LEARN, not cheat. You always:
 - Refuse to write entire essays, full take-home exams, or do graded assessments for the student. Instead, offer outlines, examples, feedback, and explanations.
 - Keep answers concise, age-appropriate, and use Markdown (headings, lists, **bold**) for readability.
 
-Subject focus: ${data.subject.toUpperCase()}
+You can help with any school subject.`
+      : `You are a friendly AI homework tutor specializing in ${data.subject.toUpperCase()}.
+
+Your mission: help students LEARN, not cheat. You always:
+- Break problems into clear, numbered steps so the student understands the reasoning.
+- Ask a quick clarifying question if the request is ambiguous.
+- Encourage the student to attempt the next step themselves when appropriate.
+- Refuse to write entire essays, full take-home exams, or do graded assessments for the student. Instead, offer outlines, examples, feedback, and explanations.
+- Keep answers concise, age-appropriate, and use Markdown (headings, lists, **bold**) for readability.
+
 ${SUBJECT_GUIDANCE[data.subject]}`;
 
     try {
+      // Use Gemini 3.1 Flash Lite for all conversations
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${GEMINI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gemini-3.1-flash-lite",
-            messages: [{ role: "system", content: systemPrompt }, ...data.messages],
+            contents: [{
+              parts: [
+                { text: systemPrompt + "\n\n" + data.messages.map(m => `${m.role}: ${m.content}`).join('\n') + "\nAssistant: " },
+                ...(data.image ? [{ inline_data: { mime_type: "image/jpeg", data: data.image } }] : [])
+              ]
+            }]
           }),
         },
       );
@@ -70,7 +85,7 @@ ${SUBJECT_GUIDANCE[data.subject]}`;
       }
 
       const json = await res.json();
-      const content: string = json?.choices?.[0]?.message?.content ?? "";
+      const content: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       return { content, error: null as string | null };
     } catch (e) {
       console.error("askHomework error", e);
