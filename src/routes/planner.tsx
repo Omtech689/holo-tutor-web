@@ -637,8 +637,8 @@ function TaskRow({
 
       <button
         onClick={onDelete}
-        className="shrink-0 opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
-        aria-label="Delete"
+        className="shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1.5 -mr-1"
+        aria-label="Delete task"
       >
         <Trash2 className="h-4 w-4" />
       </button>

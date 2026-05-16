@@ -378,7 +378,7 @@ function FlashcardsPage() {
                           e.stopPropagation();
                           void deleteDeck(d.id);
                         }}
-                        className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                        className="h-3.5 w-3.5 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                       />
                     </button>
                   </li>
@@ -492,7 +492,7 @@ function FlashcardsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => void deleteDeck(d.id)}
-                      className="h-8 w-8 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="h-8 w-8 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                       title="Delete deck"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -644,7 +644,7 @@ function FlashcardsPage() {
                         e.stopPropagation();
                         void deleteDeck(d.id);
                       }}
-                      className="h-3.5 w-3.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="h-3.5 w-3.5 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     />
                   </button>
                 </li>
@@ -743,7 +743,7 @@ function FlashcardsPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => void deleteDeck(d.id)}
-                    className="h-8 w-8 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    className="h-8 w-8 opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     title="Delete deck"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

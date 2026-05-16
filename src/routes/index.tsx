@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import "@/styles/landing.css";
 
@@ -73,8 +73,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  // Scroll-reveal: add `is-visible` to elements with `.reveal` when they enter the viewport.
   const rootRef = useRef<HTMLElement>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Scroll-reveal
   useEffect(() => {
     if (!rootRef.current) return;
     const els = rootRef.current.querySelectorAll<HTMLElement>(".reveal");
@@ -87,37 +89,94 @@ function Landing() {
           }
         });
       },
-      { threshold: 0.12 },
+      { threshold: 0.1 },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
+
+  // Lock body scroll when mobile nav is open
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileNavOpen]);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
 
   return (
     <main className="landing" ref={rootRef}>
       <div className="aurora" aria-hidden="true" />
       <div className="landing-grid" aria-hidden="true" />
 
+      {/* ---------- Mobile nav overlay ---------- */}
+      <div className={`mobile-nav${mobileNavOpen ? " is-open" : ""}`} aria-modal="true" role="dialog">
+        <div className="mobile-nav-header">
+          <a href="/" className="landing-logo" onClick={closeMobileNav}>
+            <span className="landing-logo-mark">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+              </svg>
+            </span>
+            <span>ScholarX</span>
+          </a>
+          <button className="mobile-nav-close" onClick={closeMobileNav} aria-label="Close menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <a href="#features" className="mobile-nav-link" onClick={closeMobileNav}>Features</a>
+        <a href="#how" className="mobile-nav-link" onClick={closeMobileNav}>How it works</a>
+        <a href="#planner" className="mobile-nav-link" onClick={closeMobileNav}>Planner</a>
+
+        <div className="mobile-nav-divider" />
+
+        <div className="mobile-nav-actions">
+          <a href="/login" className="btn btn-outline btn-full">Sign in</a>
+          <a href="/login?mode=signup" className="btn btn-gradient btn-full btn-glow">Get started free</a>
+        </div>
+      </div>
+
       {/* ---------- Header ---------- */}
       <header className="landing-header">
         <div className="landing-header-inner">
           <a href="/" className="landing-logo">
             <span className="landing-logo-mark">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
               </svg>
             </span>
             <span>ScholarX</span>
           </a>
 
-          <nav className="landing-nav">
+          <nav className="landing-nav" aria-label="Main navigation">
+            {/* Desktop links */}
             <div className="nav-links">
               <a href="#features" className="nav-link">Features</a>
               <a href="#how" className="nav-link">How it works</a>
               <a href="#planner" className="nav-link">Planner</a>
             </div>
-            <a href="/login" className="btn btn-ghost">Sign in</a>
-            <a href="/login?mode=signup" className="btn btn-gradient">Get started</a>
+            {/* Desktop CTAs */}
+            <a href="/login" className="btn btn-ghost nav-cta">Sign in</a>
+            <a href="/login?mode=signup" className="btn btn-gradient nav-cta">Get started</a>
+            {/* Mobile hamburger */}
+            <button
+              className="mobile-nav-btn"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileNavOpen}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </svg>
+            </button>
           </nav>
         </div>
       </header>
@@ -161,7 +220,7 @@ function Landing() {
             <div className="stat-label">Always-on tutor</div>
           </div>
           <div className="stat">
-            <div className="stat-num">0$</div>
+            <div className="stat-num">$0</div>
             <div className="stat-label">To get started</div>
           </div>
         </div>
@@ -197,7 +256,7 @@ function Landing() {
         <div className="features">
           <div className="feature is-accent reveal">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="m4.93 4.93 2.83 2.83" /><path d="M2 12h4" /><path d="m4.93 19.07 2.83-2.83" /><path d="M12 18v4" /><path d="m16.24 16.24 2.83 2.83" /><path d="M18 12h4" /><path d="m16.24 7.76 2.83-2.83" /><circle cx="12" cy="12" r="4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4" /><path d="m4.93 4.93 2.83 2.83" /><path d="M2 12h4" /><path d="m4.93 19.07 2.83-2.83" /><path d="M12 18v4" /><path d="m16.24 16.24 2.83 2.83" /><path d="M18 12h4" /><path d="m16.24 7.76 2.83-2.83" /><circle cx="12" cy="12" r="4" /></svg>
             </div>
             <h3 className="feature-title">AI tutor, on demand</h3>
             <p className="feature-desc">Step-by-step explanations tuned for students. Ask follow-ups, get analogies, request examples — until it actually clicks.</p>
@@ -205,7 +264,7 @@ function Landing() {
 
           <div className="feature is-math reveal delay-1">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>
             </div>
             <h3 className="feature-title">Beautiful math rendering</h3>
             <p className="feature-desc">Equations render with KaTeX — fractions, integrals, matrices, all looking exactly like your textbook.</p>
@@ -213,7 +272,7 @@ function Landing() {
 
           <div className="feature is-sci reveal delay-2">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19a7 7 0 0 0 7-7" /><path d="M12 19a7 7 0 0 1-7-7" /><circle cx="12" cy="5" r="3" /><path d="M12 8v4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19a7 7 0 0 0 7-7" /><path d="M12 19a7 7 0 0 1-7-7" /><circle cx="12" cy="5" r="3" /><path d="M12 8v4" /></svg>
             </div>
             <h3 className="feature-title">Voice tutor mode</h3>
             <p className="feature-desc">Talk it out. Ask questions out loud and get spoken answers — perfect for studying on the go or hands-free.</p>
@@ -221,7 +280,7 @@ function Landing() {
 
           <div className="feature is-eng reveal">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
             </div>
             <h3 className="feature-title">Built-in study planner</h3>
             <p className="feature-desc">Track assignments, deadlines, and priorities. See what's due, what's overdue, and what you've crushed — all in one view.</p>
@@ -229,7 +288,7 @@ function Landing() {
 
           <div className="feature is-hist reveal delay-1">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg>
             </div>
             <h3 className="feature-title">Saved conversations</h3>
             <p className="feature-desc">Every chat is saved to your account so you can revisit explanations anytime — across phone, tablet, and laptop.</p>
@@ -237,7 +296,7 @@ function Landing() {
 
           <div className="feature is-accent reveal delay-2">
             <div className="feature-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /></svg>
             </div>
             <h3 className="feature-title">Honesty-first</h3>
             <p className="feature-desc">ScholarX guides you to the answer rather than handing it over. Learn the why, not just the what.</p>
@@ -304,13 +363,17 @@ function Landing() {
       <section className="section">
         <div className="cta reveal">
           <h2 className="cta-title">
-            Ready to make homework <span style={{ background: "var(--gradient-primary)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>actually click</span>?
+            Ready to make homework{" "}
+            <span style={{ background: "var(--gradient-primary)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+              actually click
+            </span>
+            ?
           </h2>
           <p className="cta-sub">Free to start. No credit card. Built for curious students.</p>
           <a href="/login?mode=signup" className="btn btn-gradient btn-lg btn-glow">Create your free account</a>
 
           <div className="honesty">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M12 8v4" /><path d="M12 16h.01" />
             </svg>
             <p>

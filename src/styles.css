@@ -121,10 +121,11 @@
   body {
     background-color: var(--color-background);
     background-image: var(--gradient-aurora);
-    background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
   }
 
   :focus-visible {
