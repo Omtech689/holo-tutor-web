@@ -9,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import katex from "katex";
-import "katex/dist/katex.min.css";
 import {
   Plus,
   Send,
@@ -122,6 +121,10 @@ function ChatPage() {
   const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    import("katex/dist/katex.min.css");
+  }, []);
   const [convoSearch, setConvoSearch] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const sidebarDraggingRef = useRef(false);
