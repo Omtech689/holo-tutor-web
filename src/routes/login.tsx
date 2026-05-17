@@ -137,7 +137,7 @@ function LoginPage() {
     <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2 font-display text-lg font-semibold">
-          <img src="/logo-removebg-preview.png" className="h-8 w-8 object-contain" alt="ScholarX" />
+          <img src="/logo-favicon.png" className="h-8 w-8 object-contain" alt="ScholarX" />
           ScholarX
         </Link>
 

@@ -21,32 +21,12 @@ import { Route as GraphRouteImport } from './routes/graph'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthSignupConfirmedRouteImport } from './routes/auth.signup-confirmed'
-import { Route as AuthEmailChangePendingRouteImport } from './routes/auth.email-change-pending'
-import { Route as AuthEmailChangedRouteImport } from './routes/auth.email-changed'
 import { Route as AuthPasswordResetSuccessRouteImport } from './routes/auth.password-reset-success'
+import { Route as AuthEmailChangedRouteImport } from './routes/auth.email-changed'
+import { Route as AuthEmailChangePendingRouteImport } from './routes/auth.email-change-pending'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
-const AuthSignupConfirmedRoute = AuthSignupConfirmedRouteImport.update({
-  id: '/auth/signup-confirmed',
-  path: '/auth/signup-confirmed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthEmailChangePendingRoute = AuthEmailChangePendingRouteImport.update({
-  id: '/auth/email-change-pending',
-  path: '/auth/email-change-pending',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthEmailChangedRoute = AuthEmailChangedRouteImport.update({
-  id: '/auth/email-changed',
-  path: '/auth/email-changed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthPasswordResetSuccessRoute = AuthPasswordResetSuccessRouteImport.update({
-  id: '/auth/password-reset-success',
-  path: '/auth/password-reset-success',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TestsRoute = TestsRouteImport.update({
   id: '/tests',
   path: '/tests',
@@ -107,6 +87,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSignupConfirmedRoute = AuthSignupConfirmedRouteImport.update({
+  id: '/auth/signup-confirmed',
+  path: '/auth/signup-confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthPasswordResetSuccessRoute =
+  AuthPasswordResetSuccessRouteImport.update({
+    id: '/auth/password-reset-success',
+    path: '/auth/password-reset-success',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthEmailChangedRoute = AuthEmailChangedRouteImport.update({
+  id: '/auth/email-changed',
+  path: '/auth/email-changed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthEmailChangePendingRoute = AuthEmailChangePendingRouteImport.update({
+  id: '/auth/email-change-pending',
+  path: '/auth/email-change-pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -127,10 +128,10 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
   '/auth/email-change-pending': typeof AuthEmailChangePendingRoute
   '/auth/email-changed': typeof AuthEmailChangedRoute
   '/auth/password-reset-success': typeof AuthPasswordResetSuccessRoute
+  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -146,10 +147,10 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
   '/auth/email-change-pending': typeof AuthEmailChangePendingRoute
   '/auth/email-changed': typeof AuthEmailChangedRoute
   '/auth/password-reset-success': typeof AuthPasswordResetSuccessRoute
+  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -166,10 +167,10 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/tests': typeof TestsRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
   '/auth/email-change-pending': typeof AuthEmailChangePendingRoute
   '/auth/email-changed': typeof AuthEmailChangedRoute
   '/auth/password-reset-success': typeof AuthPasswordResetSuccessRoute
+  '/auth/signup-confirmed': typeof AuthSignupConfirmedRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,10 +188,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tests'
     | '/auth/callback'
-    | '/auth/signup-confirmed'
     | '/auth/email-change-pending'
     | '/auth/email-changed'
     | '/auth/password-reset-success'
+    | '/auth/signup-confirmed'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -206,10 +207,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tests'
     | '/auth/callback'
-    | '/auth/signup-confirmed'
     | '/auth/email-change-pending'
     | '/auth/email-changed'
     | '/auth/password-reset-success'
+    | '/auth/signup-confirmed'
   id:
     | '__root__'
     | '/'
@@ -225,10 +226,10 @@ export interface FileRouteTypes {
     | '/terms'
     | '/tests'
     | '/auth/callback'
-    | '/auth/signup-confirmed'
     | '/auth/email-change-pending'
     | '/auth/email-changed'
     | '/auth/password-reset-success'
+    | '/auth/signup-confirmed'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,10 +238,6 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   GraphRoute: typeof GraphRoute
   LoginRoute: typeof LoginRoute
-  AuthSignupConfirmedRoute: typeof AuthSignupConfirmedRoute
-  AuthEmailChangePendingRoute: typeof AuthEmailChangePendingRoute
-  AuthEmailChangedRoute: typeof AuthEmailChangedRoute
-  AuthPasswordResetSuccessRoute: typeof AuthPasswordResetSuccessRoute
   PlannerRoute: typeof PlannerRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
@@ -249,6 +246,10 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TestsRoute: typeof TestsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthEmailChangePendingRoute: typeof AuthEmailChangePendingRoute
+  AuthEmailChangedRoute: typeof AuthEmailChangedRoute
+  AuthPasswordResetSuccessRoute: typeof AuthPasswordResetSuccessRoute
+  AuthSignupConfirmedRoute: typeof AuthSignupConfirmedRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -309,18 +310,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/flashcards': {
-      id: '/flashcards'
-      path: '/flashcards'
-      fullPath: '/flashcards'
-      preLoaderRoute: typeof FlashcardsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/graph': {
       id: '/graph'
       path: '/graph'
       fullPath: '/graph'
       preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flashcards': {
+      id: '/flashcards'
+      path: '/flashcards'
+      fullPath: '/flashcards'
+      preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -337,13 +338,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/signup-confirmed': {
       id: '/auth/signup-confirmed'
       path: '/auth/signup-confirmed'
@@ -351,11 +345,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/email-change-pending': {
-      id: '/auth/email-change-pending'
-      path: '/auth/email-change-pending'
-      fullPath: '/auth/email-change-pending'
-      preLoaderRoute: typeof AuthEmailChangePendingRouteImport
+    '/auth/password-reset-success': {
+      id: '/auth/password-reset-success'
+      path: '/auth/password-reset-success'
+      fullPath: '/auth/password-reset-success'
+      preLoaderRoute: typeof AuthPasswordResetSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/email-changed': {
@@ -365,11 +359,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthEmailChangedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/password-reset-success': {
-      id: '/auth/password-reset-success'
-      path: '/auth/password-reset-success'
-      fullPath: '/auth/password-reset-success'
-      preLoaderRoute: typeof AuthPasswordResetSuccessRouteImport
+    '/auth/email-change-pending': {
+      id: '/auth/email-change-pending'
+      path: '/auth/email-change-pending'
+      fullPath: '/auth/email-change-pending'
+      preLoaderRoute: typeof AuthEmailChangePendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -381,10 +382,6 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   GraphRoute: GraphRoute,
   LoginRoute: LoginRoute,
-  AuthSignupConfirmedRoute: AuthSignupConfirmedRoute,
-  AuthEmailChangePendingRoute: AuthEmailChangePendingRoute,
-  AuthEmailChangedRoute: AuthEmailChangedRoute,
-  AuthPasswordResetSuccessRoute: AuthPasswordResetSuccessRoute,
   PlannerRoute: PlannerRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
@@ -393,6 +390,10 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TestsRoute: TestsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  AuthEmailChangePendingRoute: AuthEmailChangePendingRoute,
+  AuthEmailChangedRoute: AuthEmailChangedRoute,
+  AuthPasswordResetSuccessRoute: AuthPasswordResetSuccessRoute,
+  AuthSignupConfirmedRoute: AuthSignupConfirmedRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
