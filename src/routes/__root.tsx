@@ -1,6 +1,7 @@
-import { Outlet, createRootRoute, HeadContent, Scripts, Link } from "@tanstack/react-router";
+import { Outlet, createRootRoute, HeadContent, Scripts, Link, useNavigate } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 
@@ -85,9 +86,34 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootShell,
-  component: () => <Outlet />,
+  component: RootComponent,
   notFoundComponent: NotFoundComponent,
 });
+
+function RootComponent() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hash === "#") return;
+
+    const params = new URLSearchParams(hash.slice(1));
+    const message = params.get("message");
+    if (!message) return;
+
+    // Strip the hash so it doesn't linger if the user navigates back
+    window.history.replaceState({}, "", window.location.pathname + window.location.search);
+
+    if (message.includes("other email")) {
+      // "Confirmation link accepted. Please proceed to confirm link sent to the other email"
+      navigate({ to: "/auth/email-change-pending" });
+    } else if (/email.*(changed|updated)/i.test(message)) {
+      navigate({ to: "/auth/email-changed" });
+    }
+  }, [navigate]);
+
+  return <Outlet />;
+}
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
