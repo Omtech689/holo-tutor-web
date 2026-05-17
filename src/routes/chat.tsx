@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import katex from "katex";
+import "katex/dist/katex.min.css";
 import {
   Plus,
   Send,
