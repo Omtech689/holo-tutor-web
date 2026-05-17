@@ -77,6 +77,9 @@ function GraphPage() {
 
     return (
       <div className="border-t border-border px-3 py-3 space-y-1">
+        <Link to="/chat" onClick={mobile ? close : undefined} className={NAV_LINK}>
+          <MessageSquare className="h-4 w-4" /> Chat
+        </Link>
         <Link to="/planner" onClick={mobile ? close : undefined} className={NAV_LINK}>
           <ListTodo className="h-4 w-4" /> Study planner
         </Link>

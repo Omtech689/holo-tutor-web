@@ -22,6 +22,7 @@ import {
   BookOpen,
   MessageSquare,
   LogOut,
+  // MessageSquare used for Chat nav link
   TrendingUp,
   CheckCircle2,
   FlaskConical,
@@ -182,6 +183,9 @@ function ProgressPage() {
           ScholarX
         </div>
         <div className="border-t border-border px-3 py-3 space-y-1">
+          <Link to="/chat" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+            <MessageSquare className="h-4 w-4" /> Chat
+          </Link>
           <Link to="/planner" className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
             <ListTodo className="h-4 w-4" /> Study planner
           </Link>
