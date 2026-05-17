@@ -1048,84 +1048,114 @@ function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assist
   );
 }
 
-// Lightweight markdown-ish renderer (paragraphs, **bold**, *italics*, lists, code, tables)
+// Markdown + KaTeX renderer. Display math blocks are pre-tokenized so the
+// paragraph splitter never fragments a $$...$$ or \[...\] spanning blank lines.
 function FormattedContent({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/);
-  return (
-    <div className="space-y-2 whitespace-pre-wrap break-words">
-      {blocks.map((b, i) => {
-        // Heading level 3
-        if (b.startsWith('### ')) {
-          return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{renderInline(b.replace('### ', ''))}</h3>;
-        }
-        // Heading level 2
-        if (b.startsWith('## ')) {
-          return <h2 key={i} className="text-xl font-semibold mt-5 mb-3">{renderInline(b.replace('## ', ''))}</h2>;
-        }
-        // Heading level 1
-        if (b.startsWith('# ')) {
-          return <h1 key={i} className="text-2xl font-bold mt-6 mb-4">{renderInline(b.replace('# ', ''))}</h1>;
-        }
-        // Code blocks
-        if (/^```/.test(b)) {
-          const code = b.replace(/^```\w*\n?|```$/g, "");
-          return (
-            <pre
-              key={i}
-              className="overflow-x-auto rounded-lg bg-background/60 p-3 font-mono text-xs"
-            >
-              {code}
-            </pre>
+  type Seg = { kind: 'math'; src: string } | { kind: 'text'; src: string };
+
+  // Step 1: extract all display-math blocks before splitting on blank lines.
+  const segs: Seg[] = [];
+  const displayRe = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\])/g;
+  let cur = 0;
+  let dm: RegExpExecArray | null;
+  while ((dm = displayRe.exec(text)) !== null) {
+    if (dm.index > cur) segs.push({ kind: 'text', src: text.slice(cur, dm.index) });
+    const raw = dm[0];
+    // Both $$ and \[ delimiters are 2 chars; slice off the delimiters on both sides.
+    segs.push({ kind: 'math', src: raw.slice(2, -2) });
+    cur = dm.index + raw.length;
+  }
+  if (cur < text.length) segs.push({ kind: 'text', src: text.slice(cur) });
+
+  // Step 2: render each segment.
+  let keyIdx = 0;
+  const nodes: React.ReactNode[] = [];
+
+  for (const seg of segs) {
+    if (seg.kind === 'math') {
+      nodes.push(
+        <div key={keyIdx++} className="my-3 overflow-x-auto text-center">
+          {renderMath(seg.src, true, `dm-${keyIdx}`)}
+        </div>
+      );
+      continue;
+    }
+
+    // Split text segment into paragraph blocks.
+    const blocks = seg.src.split(/\n{2,}/);
+    for (const b of blocks) {
+      const blk = b.trim();
+      if (!blk) continue;
+      const k = keyIdx++;
+
+      if (blk.startsWith('### ')) {
+        nodes.push(<h3 key={k} className="text-lg font-semibold mt-4 mb-2">{renderInline(blk.slice(4))}</h3>);
+        continue;
+      }
+      if (blk.startsWith('## ')) {
+        nodes.push(<h2 key={k} className="text-xl font-semibold mt-5 mb-3">{renderInline(blk.slice(3))}</h2>);
+        continue;
+      }
+      if (blk.startsWith('# ')) {
+        nodes.push(<h1 key={k} className="text-2xl font-bold mt-6 mb-4">{renderInline(blk.slice(2))}</h1>);
+        continue;
+      }
+      if (/^```/.test(blk)) {
+        const code = blk.replace(/^```\w*\n?|```$/g, '');
+        nodes.push(
+          <pre key={k} className="overflow-x-auto rounded-lg bg-background/60 p-3 font-mono text-xs">
+            {code}
+          </pre>
+        );
+        continue;
+      }
+      if (/^\|.*\|$/.test(blk) && blk.includes('|')) {
+        const rows = blk.split('\n').filter(r => r.trim());
+        if (rows.length >= 2) {
+          nodes.push(
+            <table key={k} className="border-collapse border border-border rounded-lg overflow-hidden my-2">
+              <tbody>
+                {rows.map((row, ri) => {
+                  const cells = row.split('|').filter(c => c !== '').map(c => c.trim());
+                  return (
+                    <tr key={ri}>
+                      {cells.map((cell, ci) => (
+                        <td key={ci} className="border border-border px-3 py-2 text-sm">{renderInline(cell)}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           );
+          continue;
         }
-        // Tables
-        if (/^\|.*\|$/.test(b) && b.includes('|')) {
-          const rows = b.split('\n').filter(row => row.trim());
-          if (rows.length >= 2) {
-            return (
-              <table key={i} className="border-collapse border border-border rounded-lg overflow-hidden my-2">
-                <tbody>
-                  {rows.map((row, rowIndex) => {
-                    const cells = row.split('|').filter(cell => cell !== '').map(cell => cell.trim());
-                    return (
-                      <tr key={rowIndex}>
-                        {cells.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="border border-border px-3 py-2 text-sm">
-                            {renderInline(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            );
-          }
-        }
-        // Unordered lists
-        if (/^(\s*[-*]\s)/m.test(b)) {
-          return (
-            <ul key={i} className="list-disc space-y-1 pl-5">
-              {b.split("\n").map((line, j) => (
-                <li key={j}>{renderInline(line.replace(/^\s*[-*]\s/, ""))}</li>
-              ))}
-            </ul>
-          );
-        }
-        // Ordered lists
-        if (/^\s*\d+\.\s/.test(b)) {
-          return (
-            <ol key={i} className="list-decimal space-y-1 pl-5">
-              {b.split("\n").map((line, j) => (
-                <li key={j}>{renderInline(line.replace(/^\s*\d+\.\s/, ""))}</li>
-              ))}
-            </ol>
-          );
-        }
-        return <p key={i}>{renderInline(b)}</p>;
-      })}
-    </div>
-  );
+      }
+      if (/^(\s*[-*]\s)/m.test(blk)) {
+        nodes.push(
+          <ul key={k} className="list-disc space-y-1 pl-5">
+            {blk.split('\n').map((line, j) => (
+              <li key={j}>{renderInline(line.replace(/^\s*[-*]\s/, ''))}</li>
+            ))}
+          </ul>
+        );
+        continue;
+      }
+      if (/^\s*\d+\.\s/.test(blk)) {
+        nodes.push(
+          <ol key={k} className="list-decimal space-y-1 pl-5">
+            {blk.split('\n').map((line, j) => (
+              <li key={j}>{renderInline(line.replace(/^\s*\d+\.\s/, ''))}</li>
+            ))}
+          </ol>
+        );
+        continue;
+      }
+      nodes.push(<p key={k}>{renderInline(blk)}</p>);
+    }
+  }
+
+  return <div className="space-y-2 whitespace-pre-wrap break-words">{nodes}</div>;
 }
 
 function renderMath(src: string, displayMode: boolean, key: string | number) {
@@ -1161,13 +1191,13 @@ function renderInline(s: string): React.ReactNode {
     if (/^\*\*.+\*\*$/.test(p))
       return (
         <strong key={i} className="font-semibold">
-          {p.slice(2, -2)}
+          {renderInline(p.slice(2, -2))}
         </strong>
       );
     if (/^\*.+\*$/.test(p))
       return (
         <em key={i} className="italic">
-          {p.slice(1, -1)}
+          {renderInline(p.slice(1, -1))}
         </em>
       );
     if (/^`.+`$/.test(p))
