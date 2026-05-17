@@ -74,7 +74,7 @@ function LoginPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `https://scholarx.space/login?mode=signin`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`,
             data: { display_name: name || email.split("@")[0] },
           },
         });

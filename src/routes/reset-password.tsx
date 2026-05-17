@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -23,7 +23,6 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [hasValidToken, setHasValidToken] = useState(false);
 
   useEffect(() => {
@@ -175,13 +174,8 @@ function ResetPasswordPage() {
         return;
       }
 
-      setIsSuccess(true);
       toast.success("Password reset successfully!");
-      
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 3000);
+      window.location.href = "/auth/password-reset-success";
       
     } catch (err) {
       toast.error("Something went wrong");
@@ -190,27 +184,6 @@ function ResetPasswordPage() {
       setLoading(false);
     }
   };
-
-  if (isSuccess) {
-    return (
-      <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          <div className="glass rounded-2xl p-8 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Password Reset Successful</h1>
-            <p className="text-muted-foreground mb-6">
-              Your password has been successfully updated. You will be redirected to the login page shortly.
-            </p>
-            <Button onClick={() => window.location.href = "/login"} className="w-full">
-              Sign in now
-            </Button>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-10">

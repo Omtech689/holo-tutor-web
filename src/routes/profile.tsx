@@ -190,9 +190,10 @@ function ProfilePage() {
 
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail,
-      });
+      const { error } = await supabase.auth.updateUser(
+        { email: newEmail },
+        { emailRedirectTo: `${window.location.origin}/auth/callback?type=email_change` },
+      );
 
       if (error) {
         toast.error(error.message || "Failed to update email");
