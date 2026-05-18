@@ -2,63 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-function pcmToWav(pcmBuffer: Buffer, sampleRate = 24000, channels = 1, bitDepth = 16): string {
-  const dataLen = pcmBuffer.length;
-  const header = Buffer.alloc(44);
-  header.write("RIFF", 0);
-  header.writeUInt32LE(36 + dataLen, 4);
-  header.write("WAVE", 8);
-  header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16);
-  header.writeUInt16LE(1, 20);
-  header.writeUInt16LE(channels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(sampleRate * channels * (bitDepth / 8), 28);
-  header.writeUInt16LE(channels * (bitDepth / 8), 32);
-  header.writeUInt16LE(bitDepth, 34);
-  header.write("data", 36);
-  header.writeUInt32LE(dataLen, 40);
-  return Buffer.concat([header, pcmBuffer]).toString("base64");
-}
-
-export const generateSpeech = createServerFn({ method: "POST" })
+export const getGeminiKey = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ text: z.string().min(1).max(5000) }).parse(input))
-  .handler(async ({ data }) => {
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) return { audioBase64: null as string | null, error: "TTS not configured." };
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: data.text }], role: "user" }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      console.error("Gemini TTS error", res.status, await res.text());
-      return { audioBase64: null as string | null, error: "TTS request failed." };
-    }
-
-    const json = await res.json();
-    const part = json.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-    if (!part?.data) return { audioBase64: null as string | null, error: "No audio in response." };
-
-    const mimeType: string = part.mimeType ?? "audio/wav";
-    const audioBase64 = mimeType.includes("pcm")
-      ? pcmToWav(Buffer.from(part.data, "base64"))
-      : (part.data as string);
-
-    return { audioBase64, error: null as string | null };
-  });
+  .handler(async () => ({ key: process.env.GEMINI_API_KEY ?? "" }));
 
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
   let attempt = 0;

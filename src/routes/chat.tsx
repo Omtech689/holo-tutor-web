@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework, generateSpeech } from "@/api/chat.functions";
+import { askHomework, getGeminiKey } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,28 +68,29 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
   });
 }
 
-let _stopCurrentAudio: (() => void) | null = null;
-
-function interruptAudio() {
-  if (_stopCurrentAudio) { _stopCurrentAudio(); _stopCurrentAudio = null; }
+function pickVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  const priority = [
+    (v: SpeechSynthesisVoice) => /natural/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /aria/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /jenny/i.test(v.name),
+    (v: SpeechSynthesisVoice) => /google us english/i.test(v.name),
+    (v: SpeechSynthesisVoice) => v.lang.startsWith("en") && /google/i.test(v.name),
+    (v: SpeechSynthesisVoice) => v.lang === "en-US",
+    (v: SpeechSynthesisVoice) => v.lang.startsWith("en"),
+  ];
+  for (const test of priority) {
+    const match = voices.find(test);
+    if (match) return match;
+  }
+  return voices[0] ?? null;
 }
 
-async function playAudioBase64(base64: string, onDone?: () => void): Promise<void> {
-  interruptAudio();
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const blob = new Blob([bytes], { type: "audio/wav" });
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  const cleanup = () => {
-    _stopCurrentAudio = null;
-    audio.pause();
-    URL.revokeObjectURL(url);
-    onDone?.();
-  };
-  _stopCurrentAudio = cleanup;
-  audio.onended = cleanup;
-  audio.onerror = cleanup;
-  await audio.play().catch(cleanup);
+function bufToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
 }
 
 function stripForSpeech(s: string) {
@@ -140,12 +141,18 @@ function ChatPage() {
   const [displayName, setDisplayName] = useState<string>("");
   const [listening, setListening] = useState(false);
   const [convoMode, setConvoMode] = useState(false);
-  const [speakingId, setSpeakingId] = useState<number | null>(null); // used by convo-mode speak tracking
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(text?: string) => Promise<void>>(() => Promise.resolve());
   const convoModeRef = useRef(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [ttsSupported, setTtsSupported] = useState(false);
+  const geminiWsRef = useRef<WebSocket | null>(null);
+  const playbackCtxRef = useRef<AudioContext | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const nextPlayTimeRef = useRef(0);
+  const pendingAsstTextRef = useRef("");
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -174,6 +181,8 @@ function ChatPage() {
     setSpeechSupported(
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
+    setTtsSupported("speechSynthesis" in window);
+    return () => { stopGeminiLive(); };
   }, []);
 
   useEffect(() => {
@@ -314,41 +323,146 @@ function ChatPage() {
     startListening(false);
   }
 
-  async function toggleConvoMode() {
-    if (!speechSupported) {
-      toast.error("Microphone isn't supported in this browser. Try Chrome or Edge.");
-      return;
-    }
-    if (convoMode) {
-      setConvoMode(false);
-      try { recognitionRef.current?.stop(); } catch {}
-      interruptAudio();
-      setSpeakingId(null);
-      return;
-    }
-    const ok = await ensureMicPermission();
-    if (!ok) return;
-    setConvoMode(true);
-    toast.success("Conversation mode on — speak when ready.");
-    startListening(true);
+  function playLivePcm(base64: string) {
+    const ctx = playbackCtxRef.current;
+    if (!ctx) return;
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+    const buf = ctx.createBuffer(1, float32.length, 24000);
+    buf.getChannelData(0).set(float32);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const start = Math.max(nextPlayTimeRef.current, now);
+    src.start(start);
+    nextPlayTimeRef.current = start + buf.duration;
   }
 
-  async function speakAssistant(text: string, onDone?: () => void) {
-    const clean = stripForSpeech(text);
-    const id = Date.now();
-    setSpeakingId(id);
-    try {
-      const result = await generateSpeech({ data: { text: clean } });
-      if (result.audioBase64) {
-        await playAudioBase64(result.audioBase64, () => { setSpeakingId(null); onDone?.(); });
-      } else {
-        setSpeakingId(null);
-        onDone?.();
-      }
-    } catch {
-      setSpeakingId(null);
-      onDone?.();
+  function handleLiveMessage(raw: string) {
+    let data: any;
+    try { data = JSON.parse(raw); } catch { return; }
+    const sc = data.serverContent;
+    if (!sc) return;
+    const parts: any[] = sc.modelTurn?.parts ?? [];
+    for (const p of parts) {
+      if (p.inlineData?.data) playLivePcm(p.inlineData.data);
+      if (p.text) pendingAsstTextRef.current += p.text;
     }
+    if (sc.turnComplete && pendingAsstTextRef.current.trim()) {
+      const text = pendingAsstTextRef.current.trim();
+      pendingAsstTextRef.current = "";
+      setMessages((prev) => [...prev, { role: "assistant" as const, content: text }]);
+    }
+  }
+
+  function stopGeminiLive() {
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micStreamRef.current = null;
+    playbackCtxRef.current?.close();
+    playbackCtxRef.current = null;
+    geminiWsRef.current?.close();
+    geminiWsRef.current = null;
+    nextPlayTimeRef.current = 0;
+    pendingAsstTextRef.current = "";
+  }
+
+  async function startGeminiLive() {
+    const { key } = await getGeminiKey();
+    if (!key) { toast.error("Voice conversation not configured."); return; }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err: any) => {
+      const name = err?.name ?? "";
+      if (name === "NotAllowedError") toast.error("Microphone permission denied.");
+      else if (name === "NotFoundError") toast.error("No microphone found.");
+      else toast.error("Couldn't access microphone.");
+      return null;
+    });
+    if (!stream) return;
+
+    micStreamRef.current = stream;
+    const playCtx = new AudioContext();
+    playbackCtxRef.current = playCtx;
+    nextPlayTimeRef.current = 0;
+
+    const ws = new WebSocket(
+      `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`,
+    );
+    geminiWsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        setup: {
+          model: "models/gemini-2.5-flash-native-audio-dialog",
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } },
+          },
+          systemInstruction: {
+            parts: [{ text: "You are a friendly AI homework tutor. Help students learn by walking through problems step by step. Keep answers clear and concise." }],
+          },
+        },
+      }));
+
+      // Start streaming mic audio after setup
+      const micCtx = new AudioContext();
+      const source = micCtx.createMediaStreamSource(stream);
+      // ScriptProcessorNode: capture PCM, resample to 16 kHz, stream to Gemini
+      const bufSize = 4096;
+      const proc = micCtx.createScriptProcessor(bufSize, 1, 1);
+      processorRef.current = proc;
+      proc.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const input = e.inputBuffer.getChannelData(0);
+        const ratio = micCtx.sampleRate / 16000;
+        const outLen = Math.floor(input.length / ratio);
+        const int16 = new Int16Array(outLen);
+        for (let i = 0; i < outLen; i++) {
+          const s = input[Math.floor(i * ratio)];
+          int16[i] = Math.max(-32768, Math.min(32767, s * 32768));
+        }
+        ws.send(JSON.stringify({
+          realtimeInput: { audio: { data: bufToBase64(int16.buffer), mimeType: "audio/pcm;rate=16000" } },
+        }));
+      };
+      source.connect(proc);
+      proc.connect(micCtx.destination);
+    };
+
+    ws.onmessage = (e) => handleLiveMessage(e.data);
+
+    ws.onerror = () => {
+      toast.error("Voice connection error — ending conversation.");
+      setConvoMode(false);
+      setListening(false);
+      stopGeminiLive();
+    };
+
+    ws.onclose = () => {
+      if (convoModeRef.current) {
+        setConvoMode(false);
+        setListening(false);
+        stopGeminiLive();
+      }
+    };
+
+    setListening(true);
+  }
+
+  async function toggleConvoMode() {
+    if (convoMode) {
+      setConvoMode(false);
+      setListening(false);
+      stopGeminiLive();
+      return;
+    }
+    setConvoMode(true);
+    toast.success("Connecting to voice conversation…");
+    await startGeminiLive();
   }
 
 
@@ -577,13 +691,6 @@ function ChatPage() {
         .eq("id", convoId);
 
       await loadConversations();
-
-      // In conversation mode: auto-speak reply, then re-listen
-      if (convoModeRef.current) {
-        speakAssistant(result.content, () => {
-          if (convoModeRef.current) startListening(true);
-        });
-      }
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Failed to send");
@@ -921,7 +1028,7 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} />
             ))}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -991,7 +1098,7 @@ function ChatPage() {
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
-              {mounted && speechSupported && (
+              {mounted && (
                 <Button
                   onClick={toggleConvoMode}
                   size="icon"
@@ -1023,31 +1130,26 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content, image }: { role: "user" | "assistant"; content: string; image?: string }) {
+function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
-  const [ttsLoading, setTtsLoading] = useState(false);
 
-  async function toggleSpeak() {
-    if (speaking || ttsLoading) {
-      interruptAudio();
+  function toggleSpeak() {
+    if (!ttsSupported) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
       setSpeaking(false);
-      setTtsLoading(false);
       return;
     }
-    setTtsLoading(true);
-    try {
-      const result = await generateSpeech({ data: { text: stripForSpeech(content) } });
-      if (result.audioBase64) {
-        setTtsLoading(false);
-        setSpeaking(true);
-        await playAudioBase64(result.audioBase64, () => setSpeaking(false));
-      } else {
-        setTtsLoading(false);
-      }
-    } catch {
-      setTtsLoading(false);
-    }
+    const clean = stripForSpeech(content);
+    const u = new SpeechSynthesisUtterance(clean);
+    const voice = pickVoice();
+    if (voice) u.voice = voice;
+    u.onend = () => setSpeaking(false);
+    u.onerror = () => setSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    setSpeaking(true);
   }
 
   return (
@@ -1061,15 +1163,14 @@ function Bubble({ role, content, image }: { role: "user" | "assistant"; content:
       >
         {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
         <FormattedContent text={content} />
-        {!isUser && (
+        {!isUser && ttsSupported && (
           <button
             onClick={toggleSpeak}
-            disabled={false}
             className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground"
             title={speaking ? "Stop" : "Read aloud"}
           >
-            {ttsLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-            {ttsLoading ? "Loading…" : speaking ? "Stop" : "Listen"}
+            {speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            {speaking ? "Stop" : "Listen"}
           </button>
         )}
       </div>
