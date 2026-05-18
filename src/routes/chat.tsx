@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-ro
 import { RouteError } from "@/components/ui/route-error";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { askHomework } from "@/api/chat.functions";
+import { askHomework, generateSpeech } from "@/api/chat.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,25 +68,28 @@ async function compressImage(file: File, maxDim = 1024, quality = 0.75): Promise
   });
 }
 
-function pickVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-  // Prefer neural / natural-sounding voices in priority order
-  const priority = [
-    (v: SpeechSynthesisVoice) => /natural/i.test(v.name),
-    (v: SpeechSynthesisVoice) => /aria/i.test(v.name),
-    (v: SpeechSynthesisVoice) => /jenny/i.test(v.name),
-    (v: SpeechSynthesisVoice) => /guy/i.test(v.name),
-    (v: SpeechSynthesisVoice) => /google us english/i.test(v.name),
-    (v: SpeechSynthesisVoice) => /google uk english female/i.test(v.name),
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("en") && /google/i.test(v.name),
-    (v: SpeechSynthesisVoice) => v.lang === "en-US",
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("en"),
-  ];
-  for (const test of priority) {
-    const match = voices.find(test);
-    if (match) return match;
-  }
-  return voices[0] ?? null;
+let _stopCurrentAudio: (() => void) | null = null;
+
+function interruptAudio() {
+  if (_stopCurrentAudio) { _stopCurrentAudio(); _stopCurrentAudio = null; }
+}
+
+async function playAudioBase64(base64: string, onDone?: () => void): Promise<void> {
+  interruptAudio();
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: "audio/wav" });
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  const cleanup = () => {
+    _stopCurrentAudio = null;
+    audio.pause();
+    URL.revokeObjectURL(url);
+    onDone?.();
+  };
+  _stopCurrentAudio = cleanup;
+  audio.onended = cleanup;
+  audio.onerror = cleanup;
+  await audio.play().catch(cleanup);
 }
 
 function stripForSpeech(s: string) {
@@ -137,13 +140,12 @@ function ChatPage() {
   const [displayName, setDisplayName] = useState<string>("");
   const [listening, setListening] = useState(false);
   const [convoMode, setConvoMode] = useState(false);
-  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [speakingId, setSpeakingId] = useState<number | null>(null); // used by convo-mode speak tracking
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(text?: string) => Promise<void>>(() => Promise.resolve());
   const convoModeRef = useRef(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [ttsSupported, setTtsSupported] = useState(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
@@ -172,7 +174,6 @@ function ChatPage() {
     setSpeechSupported(
       !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     );
-    setTtsSupported("speechSynthesis" in window);
   }, []);
 
   useEffect(() => {
@@ -314,18 +315,17 @@ function ChatPage() {
   }
 
   async function toggleConvoMode() {
-    if (!speechSupported || !ttsSupported) {
-      toast.error("Voice conversation isn't supported in this browser. Try Chrome or Edge.");
+    if (!speechSupported) {
+      toast.error("Microphone isn't supported in this browser. Try Chrome or Edge.");
       return;
     }
     if (convoMode) {
       setConvoMode(false);
       try { recognitionRef.current?.stop(); } catch {}
-      window.speechSynthesis.cancel();
+      interruptAudio();
       setSpeakingId(null);
       return;
     }
-    // Pre-prompt mic permission once before entering convo mode
     const ok = await ensureMicPermission();
     if (!ok) return;
     setConvoMode(true);
@@ -333,18 +333,22 @@ function ChatPage() {
     startListening(true);
   }
 
-  function speakAssistant(text: string, onDone?: () => void) {
-    if (!ttsSupported) { onDone?.(); return; }
+  async function speakAssistant(text: string, onDone?: () => void) {
     const clean = stripForSpeech(text);
-    const u = new SpeechSynthesisUtterance(clean);
-    const voice = pickVoice();
-    if (voice) u.voice = voice;
     const id = Date.now();
     setSpeakingId(id);
-    u.onend = () => { setSpeakingId(null); onDone?.(); };
-    u.onerror = () => { setSpeakingId(null); onDone?.(); };
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    try {
+      const result = await generateSpeech({ data: { text: clean } });
+      if (result.audioBase64) {
+        await playAudioBase64(result.audioBase64, () => { setSpeakingId(null); onDone?.(); });
+      } else {
+        setSpeakingId(null);
+        onDone?.();
+      }
+    } catch {
+      setSpeakingId(null);
+      onDone?.();
+    }
   }
 
 
@@ -917,7 +921,7 @@ function ChatPage() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.length === 0 && <EmptyState subject={subject} onPick={setInput} />}
             {messages.map((m, i) => (
-              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} ttsSupported={ttsSupported} />
+              <Bubble key={m.id ?? i} role={m.role} content={m.content} image={m.image} />
             ))}
             {loading && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
@@ -987,7 +991,7 @@ function ChatPage() {
                   {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
-              {mounted && speechSupported && ttsSupported && (
+              {mounted && speechSupported && (
                 <Button
                   onClick={toggleConvoMode}
                   size="icon"
@@ -1019,26 +1023,31 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assistant"; content: string; image?: string; ttsSupported: boolean }) {
+function Bubble({ role, content, image }: { role: "user" | "assistant"; content: string; image?: string }) {
   const isUser = role === "user";
   const [speaking, setSpeaking] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
 
-  function toggleSpeak() {
-    if (!ttsSupported) return;
-    if (speaking) {
-      window.speechSynthesis.cancel();
+  async function toggleSpeak() {
+    if (speaking || ttsLoading) {
+      interruptAudio();
       setSpeaking(false);
+      setTtsLoading(false);
       return;
     }
-    const clean = stripForSpeech(content);
-    const u = new SpeechSynthesisUtterance(clean);
-    const voice = pickVoice();
-    if (voice) u.voice = voice;
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-    setSpeaking(true);
+    setTtsLoading(true);
+    try {
+      const result = await generateSpeech({ data: { text: stripForSpeech(content) } });
+      if (result.audioBase64) {
+        setTtsLoading(false);
+        setSpeaking(true);
+        await playAudioBase64(result.audioBase64, () => setSpeaking(false));
+      } else {
+        setTtsLoading(false);
+      }
+    } catch {
+      setTtsLoading(false);
+    }
   }
 
   return (
@@ -1052,14 +1061,15 @@ function Bubble({ role, content, image, ttsSupported }: { role: "user" | "assist
       >
         {image && <img src={`data:image/jpeg;base64,${image}`} alt="Uploaded" className="mb-2 max-w-full rounded-lg" />}
         <FormattedContent text={content} />
-        {!isUser && ttsSupported && (
+        {!isUser && (
           <button
             onClick={toggleSpeak}
+            disabled={false}
             className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground"
             title={speaking ? "Stop" : "Read aloud"}
           >
-            {speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-            {speaking ? "Stop" : "Listen"}
+            {ttsLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : speaking ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            {ttsLoading ? "Loading…" : speaking ? "Stop" : "Listen"}
           </button>
         )}
       </div>
